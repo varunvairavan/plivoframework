@@ -1286,7 +1286,9 @@ class Enqueque(Element):
 
     def __init__(self):
         Element.__init__(self)
+        self.nestables = ('Speak', 'Play')
         self.queue_name = ''
+        self.sound_files = []
 
     def parse_element(self, element, uri=None):
         Element.parse_element(self, element, uri)
@@ -1297,10 +1299,54 @@ class Enqueque(Element):
             raise RESTFormatException("How will i know which queue to put him in")
 
     def prepare(self, outbound_socket):
-        pass
+        for child_instance in self.children:
+            if hasattr(child_instance, "prepare"):
+                # :TODO Prepare Element concurrently
+                child_instance.prepare(outbound_socket)
 
     def execute(self, outbound_socket):
-        outbound_socket.execute("fifo", self.queue_name+" in '/sounds/en/us/callie/misc/8000/we_are_trying_to_reach.wav' '/sounds/music/8000/ponce-preludio-in-e-major.wav'")
+        for child_instance in self.children:
+            if isinstance(child_instance, Play):
+                sound_file = child_instance.sound_file_path
+                if sound_file:
+                    loop = child_instance.loop_times
+                    if loop == 0:
+                        loop = MAX_LOOPS  # Add a high number to Play infinitely
+                    # Play the file loop number of times
+                    for i in range(loop):
+                        self.sound_files.append(sound_file)
+                    # Infinite Loop, so ignore other children
+                    if loop == MAX_LOOPS:
+                        break
+            elif isinstance(child_instance, Speak):
+                text = child_instance.text
+                # escape simple quote
+                text = text.replace("'", "\\'")
+                loop = child_instance.loop_times
+                child_type = child_instance.item_type
+                method = child_instance.method
+                say_str = ''
+                if child_type and method:
+                    language = child_instance.language
+                    say_args = "%s.wav %s %s %s '%s'" \
+                                    % (language, language, child_type, method, text)
+                    say_str = "${say_string %s}" % say_args
+                else:
+                    engine = child_instance.engine
+                    voice = child_instance.voice
+                    say_str = "say:%s:%s:'%s'" % (engine, voice, text)
+                if not say_str:
+                    continue
+                for i in range(loop):
+                    self.sound_files.append(say_str)
+
+
+        outbound_socket.set("playback_delimiter=!")
+        play_str = "file_string://silence_stream://2000"
+        for sound_file in self.sound_files:
+            play_str = "%s!%s" % (play_str, sound_file)
+
+        outbound_socket.execute("fifo", self.queue_name+" in undef "+(play_str if len(self.sound_files) > 0 else "/sounds/music/8000/ponce-preludio-in-e-major.wav"))
         outbound_socket.wait_for_action()
 
 
