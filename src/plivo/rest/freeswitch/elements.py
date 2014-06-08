@@ -1346,8 +1346,9 @@ class Enqueque(Element):
         for sound_file in self.sound_files:
             play_str = "%s!%s" % (play_str, sound_file)
 
-        outbound_socket.execute("fifo", self.queue_name+" in undef "+(play_str if len(self.sound_files) > 0 else "/sounds/music/8000/ponce-preludio-in-e-major.wav"))
+        outbound_socket.execute("fifo", "%s in undef %s" % (self.queue_name, (play_str if len(self.sound_files) > 0 else "/sounds/music/8000/ponce-preludio-in-e-major.wav")))
         outbound_socket.wait_for_action()
+        gevent.sleep(seconds=1)
 
 
 class Play(Element):

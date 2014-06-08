@@ -590,6 +590,17 @@ class PlivoRestApi(object):
                              RequestUUID=request_uuid)
 
     @auth_protect
+    def dequeue(self):
+        queue_name = get_post_param(request, "QueueName")
+        agent_name = get_post_param(request, "Destination")
+
+
+
+        self._rest_inbound_socket.api("originate user/1000 'fifo:default out nowait undef undef' inline")
+        return self.send_response(Success=True, Message="Done")
+
+
+    @auth_protect
     def bulk_call(self):
         """Make Bulk Outbound Calls in one request
         Allow initiating bulk outbound calls via the REST API. To make a
