@@ -138,6 +138,9 @@ ELEMENTS_DEFAULT_PARAMS = {
                 'engine': 'pocketsphinx',
                 'grammar': '',
                 'grammarPath': '/usr/local/freeswitch/grammar'
+        },
+        'Enqueque': {
+                'queue_name': ''
         }
     }
 
@@ -1276,6 +1279,29 @@ class Wait(Element):
                                 % str(self.length * 1000)
         outbound_socket.playback(pause_str)
         event = outbound_socket.wait_for_action()
+
+
+class Enqueque(Element):
+    """Queue a call/park it"""
+
+    def __init__(self):
+        Element.__init__(self)
+        self.queue_name = ''
+
+    def parse_element(self, element, uri=None):
+        Element.parse_element(self, element, uri)
+
+        self.queue_name = self.extract_attribute_value("queue_name")
+
+        if not self.queue_name:
+            raise RESTFormatException("How will i know which queue to put him in")
+
+    def prepare(self, outbound_socket):
+        pass
+
+    def execute(self, outbound_socket):
+        outbound_socket.execute("fifo", self.queue_name+" in '/sounds/en/us/callie/misc/8000/we_are_trying_to_reach.wav' '/sounds/music/8000/ponce-preludio-in-e-major.wav'")
+        outbound_socket.wait_for_action()
 
 
 class Play(Element):
